@@ -1,0 +1,262 @@
+Microsoft (R) Macro Assembler Version 5.00                  6/5/20 20:30:38
+                                                             Page     1-1
+
+
+ 0000				STACK SEGMENT PARA STACK 
+ 0000  0040[				DB 64 DUP (' ') 
+	   20			
+			 ]	
+				
+ 0040				STACK ENDS 
+				 
+				; Data segment 
+				; DW - Define Word (16 bit) 
+ 0000				DATA SEGMENT PARA 'DATA' 
+				 
+ 0000  0140			 WINDOW_WIDTH DW 140h	; 320 pixels (width) 
+ 0002  00C8			 WINDOW_HEIGHT DW 0C8h	; 200 pixels (height) 
+				 
+ 0004  00			 TIME_AUX DB 0		; Variable to check if 
+				the time has changed 
+				 
+ 0005  000A			 BALL_X DW 0Ah 		; x position of the bal
+				l 
+ 0007  000A			 BALL_Y DW 0Ah 		; y position of the bal
+				l 
+ 0009  0004			 BALL_SIZE DW 04h	; 4 on x 4 on y = 16 in
+				 total 
+ 000B  0005			 BALL_VELOCITY_X DW 05h ;  
+ 000D  0002			 BALL_VELOCITY_Y DW 02h 
+				 
+ 000F				DATA ENDS 
+				 
+ 0000				CODE SEGMENT PARA 'CODE' 
+ 0000					MAIN PROC FAR 
+					;Tell assembly where our variables are 
+					;CS - Code Segment name 
+					;DS - Data Segment name 
+					;SS - Stack Segment name 
+					ASSUME CS:CODE, DS:DATA, SS:STACK 
+					 
+ 0000  1E				PUSH DS 		; push to the s
+				tack the DS segment 
+ 0001  2B C0				SUB AX, AX 		; Clean accumul
+				ator 
+ 0003  50				PUSH AX 		; Push AX to th
+				e stack 
+ 0004  B8 ---- R			MOV AX, DATA	; Save on the AX data c
+				ontent  
+ 0007  8E D8				MOV DS,AX		; Save on DS, t
+				he contents of AX 
+ 0009  58				POP AX			; Release top o
+				f stack to the AX register 
+ 000A  58				POP AX			; Release top o
+				f stack to the AX register 
+					 
+				 
+ 000B					CHECK_TIME: 
+					 
+Microsoft (R) Macro Assembler Version 5.00                  6/5/20 20:30:38
+                                                             Page     1-2
+
+
+ 000B  B4 2C				MOV AH, 2Ch		; Get system ti
+				me 
+ 000D  CD 21				INT 21h			; Return: CH = 
+				hour CL = minute DH = second DL = 1/100 seconds
+				 
+						 
+ 000F  3A 16 0004 R			CMP DL, TIME_AUX; if the current time =
+				= to prev (TIME_AUX) ? 
+ 0013  74 F6				JE CHECK_TIME	; if it is the same, ch
+				eck again 
+					 
+					; reach this if time is different 
+ 0015  88 16 0004 R			MOV TIME_AUX, DL 	; update time 
+							 
+ 0019  E8 006B R			CALL CLEAR_SCREEN 
+ 001C  E8 0028 R			CALL MOVE_BALL 
+						 
+ 001F  E8 006B R			CALL CLEAR_SCREEN 
+ 0022  E8 007A R			CALL DRAW_BALL 
+ 0025  EB E4				JMP CHECK_TIME	; after drawing check t
+				ime again 
+						 
+ 0027  CB				RET 
+ 0028					MAIN ENDP 
+					 
+					; Move ball 
+ 0028					MOVE_BALL PROC NEAR 
+				 
+						 
+ 0028  A1 000B R				MOV AX, BALL_VELOCITY_X 
+ 002B  01 06 0005 R				ADD BALL_X, AX 
+ 002F  83 3E 0005 R 00				CMP BALL_X, 00h		
+							; BALL_X < 0 (x collide
+				d) 
+ 0034  7C 21					JL NEG_VELOCITY_X	
+							; BALL_X > WINDOW_WIDTH
+				 (x collided) 
+ 0036  A1 0000 R				MOV AX, WINDOW_WIDTH 
+ 0039  39 06 0005 R				CMP BALL_X, AX 
+ 003D  7F 22					JG POS_VELOCITY_X 
+						 
+ 003F  A1 000D R				MOV AX, BALL_VELOCITY_Y	
+					 
+ 0042  01 06 0007 R				ADD BALL_Y, AX 
+ 0046  83 3E 0007 R 00				CMP	BALL_Y, 00h	
+					; BALL_Y < 0 (y collided) 
+ 004B  7C 00					JL NEX_VELOCITY_Y 
+pong.asm(75): error A2009: Symbol not defined: NEX_VELOCITY_Y
+ 004D  A1 0002 R				MOV AX, WINDOW_HEIGHT ; BALL_Y 
+				> WINDOW_HEIGHT (y collided) 
+ 0050  39 06 0007 R				CMP BALL_Y, AX 
+ 0054  7F 10					JG POS_VELOCITY_Y 
+									
+							 
+Microsoft (R) Macro Assembler Version 5.00                  6/5/20 20:30:38
+                                                             Page     1-3
+
+
+ 0056  C3					RET 
+						 
+ 0057						NEG_VELOCITY_X: 
+ 0057  FF 0E 000B R					DEC BALL_VELOCITY_X; 
+ 005B  C3						RET 
+							 
+ 005C						NEG_VELOCITY_Y: 
+ 005C  FF 0E 000D R					DEC BALL_VELOCITY_Y; 
+ 0060  C3						RET 
+						 
+ 0061						POS_VELOCITY_X: 
+ 0061  FF 06 000B R					INC BALL_VELOCITY_X 
+ 0065  C3						RET 
+						 
+ 0066						POS_VELOCITY_Y: 
+ 0066  FF 06 000D R					INC BALL_VELOCITY_Y 
+ 006A  C3						RET 
+						 
+					 
+						 
+					 
+					 
+ 006B					MOVE_BALL ENDP 
+					 
+					; clear screen 
+ 006B					CLEAR_SCREEN PROC NEAR 
+						; clear the screen 
+ 006B  B4 00					mov AH, 00h ; set video mode 
+ 006D  B0 13					mov AL, 13h ; 13  320x200 256 c
+				olor graphics (MCGA,VGA) 
+ 006F  CD 10					int 10h		; execute inter
+				ruption 
+							 
+						; background color 
+ 0071  B4 0B					mov AH,0Bh 
+ 0073  B7 00					mov BH, 00h 
+ 0075  B3 00					mov BL, 00h ; black color 
+ 0077  CD 10					int 10h 
+						;  
+ 0079  C3				RET 
+ 007A					CLEAR_SCREEN ENDP 
+					 
+					; draw a pixel 
+ 007A					DRAW_BALL PROC NEAR 
+ 007A  8B 0E 0005 R				mov CX,BALL_X ; initial x = 10 
+ 007E  8B 16 0007 R				mov DX,BALL_Y ; initial y = 10 
+						 
+ 0082						DRAW_BALL_HORIZONTAL: 
+ 0082  B4 0C						mov AH,0Ch ; set config
+				 to write pixel 
+ 0084  B0 0A						mov AL,0Ah ; green 
+ 0086  B7 00						mov BH,00h ; page numbe
+				r 
+ 0088  CD 10						int 10h 
+Microsoft (R) Macro Assembler Version 5.00                  6/5/20 20:30:38
+                                                             Page     1-4
+
+
+							 
+ 008A  41						INC CX		;CX = C
+				X + 1 
+ 008B  8B C1						MOV AX,CX	
+						;CX - BALL_X > BALL_SIZE ( if t
+				rue we go to the next line) 
+ 008D  2B 06 0005 R					SUB AX,BALL_X 
+ 0091  3B 06 0009 R					CMP AX, BALL_SIZE 
+ 0095  7E EB						JNG DRAW_BALL_HORIZONTA
+				L ; CX - BALL_X > BALL_SIZE = false 
+							 
+ 0097  8B 0E 0005 R					MOV CX, BALL_X	; the C
+				X register back to initial ball_x 
+ 009B  42						INC DX		
+					; advance line 
+							 
+ 009C  8B C2						MOV AX, DX	
+							; DX - BALL_Y > BALL_SI
+				ZE (Y -> we exit this procedure, N -> continue)
+				 
+ 009E  2B 06 0007 R					SUB AX, BALL_Y 
+ 00A2  3B 06 0009 R					CMP AX, BALL_SIZE 
+ 00A6  7E DA						JNG DRAW_BALL_HORIZONTA
+				L 
+						 
+						 
+ 00A8  C3					RET 
+ 00A9					DRAW_BALL ENDP 
+				 
+ 00A9				CODE ENDS 
+				END 
+Microsoft (R) Macro Assembler Version 5.00                  6/5/20 20:30:38
+                                                             Symbols-1
+
+
+Segments and Groups:
+
+                N a m e         	Length	 Align	Combine Class
+
+CODE . . . . . . . . . . . . . .  	00A9	PARA	NONE	'CODE'
+DATA . . . . . . . . . . . . . .  	000F	PARA	NONE	'DATA'
+STACK  . . . . . . . . . . . . .  	0040	PARA	STACK	
+
+Symbols:            
+
+                N a m e         	Type	 Value	 Attr
+
+BALL_SIZE  . . . . . . . . . . .  	L WORD	0009	DATA
+BALL_VELOCITY_X  . . . . . . . .  	L WORD	000B	DATA
+BALL_VELOCITY_Y  . . . . . . . .  	L WORD	000D	DATA
+BALL_X . . . . . . . . . . . . .  	L WORD	0005	DATA
+BALL_Y . . . . . . . . . . . . .  	L WORD	0007	DATA
+
+CHECK_TIME . . . . . . . . . . .  	L NEAR	000B	CODE
+CLEAR_SCREEN . . . . . . . . . .  	N PROC	006B	CODE	Length = 000F
+
+DRAW_BALL  . . . . . . . . . . .  	N PROC	007A	CODE	Length = 002F
+DRAW_BALL_HORIZONTAL . . . . . .  	L NEAR	0082	CODE
+
+MAIN . . . . . . . . . . . . . .  	F PROC	0000	CODE	Length = 0028
+MOVE_BALL  . . . . . . . . . . .  	N PROC	0028	CODE	Length = 0043
+
+NEG_VELOCITY_X . . . . . . . . .  	L NEAR	0057	CODE
+NEG_VELOCITY_Y . . . . . . . . .  	L NEAR	005C	CODE
+
+POS_VELOCITY_X . . . . . . . . .  	L NEAR	0061	CODE
+POS_VELOCITY_Y . . . . . . . . .  	L NEAR	0066	CODE
+
+TIME_AUX . . . . . . . . . . . .  	L BYTE	0004	DATA
+
+WINDOW_HEIGHT  . . . . . . . . .  	L WORD	0002	DATA
+WINDOW_WIDTH . . . . . . . . . .  	L WORD	0000	DATA
+
+@FILENAME  . . . . . . . . . . .  	TEXT  pong		
+
+
+    150 Source  Lines
+    150 Total   Lines
+     23 Symbols
+
+  51266 + 465278 Bytes symbol space free
+
+      0 Warning Errors
+      1 Severe  Errors

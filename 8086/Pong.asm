@@ -6,6 +6,10 @@ STACK ENDS
 ; DW - Define Word (16 bit)
 DATA SEGMENT PARA 'DATA'
 
+ WINDOW_WIDTH DW 140h	; 320 pixels (width)
+ WINDOW_HEIGHT DW 0C8h	; 200 pixels (height)
+ WINDOW_BOUNDS DW 06h	; variable to check collisions early
+
  TIME_AUX DB 0		; Variable to check if the time has changed
 
  BALL_X DW 0Ah 		; x position of the ball
@@ -32,41 +36,65 @@ CODE SEGMENT PARA 'CODE'
 	POP AX			; Release top of stack to the AX register
 	POP AX			; Release top of stack to the AX register
 	
+
+	CHECK_TIME:
+	
+	MOV AH, 2Ch		; Get system time
+	INT 21h			; Return: CH = hour CL = minute DH = second DL = 1/100 seconds
+		
+	CMP DL, TIME_AUX; if the current time == to prev (TIME_AUX) ?
+	JE CHECK_TIME	; if it is the same, check again
+	
+	; reach this if time is different
+	MOV TIME_AUX, DL 	; update time
 			
 	CALL CLEAR_SCREEN
 	CALL MOVE_BALL
-	
+		
+	CALL CLEAR_SCREEN
+	CALL DRAW_BALL
+	JMP CHECK_TIME	; after drawing check time again
 		
 	RET
 	MAIN ENDP
 	
 	; Move ball
 	MOVE_BALL PROC NEAR
-		CHECK_TIME:
-	
-		MOV AH, 2Ch		; Get system time
-		INT 21h			; Return: CH = hour CL = minute DH = second DL = 1/100 seconds
-		
-		CMP DL, TIME_AUX; if the current time == to prev (TIME_AUX) ?
-		JE CHECK_TIME	; if it is the same, check again
-			
-		; reach this if time is different
-		MOV TIME_AUX, DL 	; update time
+
 		
 		MOV AX, BALL_VELOCITY_X
 		ADD BALL_X, AX
+		MOV AX, WINDOW_BOUNDS
+		CMP BALL_X, AX		; BALL_X < 0 (x collided)
+		JL NEG_VELOCITY_X				; BALL_X > WINDOW_WIDTH (x collided)
 		
-		MOV AX, BALL_VELOCITY_Y
+		MOV AX, WINDOW_WIDTH
+		SUB AX, BALL_SIZE
+		SUB AX, WINDOW_BOUNDS
+		CMP BALL_X, AX
+		JG NEG_VELOCITY_X
+		
+		MOV AX, BALL_VELOCITY_Y		
 		ADD BALL_Y, AX
+		MOV AX, WINDOW_BOUNDS
+		CMP	BALL_Y, AX		; BALL_Y < 0 (y collided)
+		JL NEG_VELOCITY_Y
+		MOV AX, WINDOW_HEIGHT ; BALL_Y > WINDOW_HEIGHT (y collided)
+		SUB AX, BALL_SIZE
+		SUB AX, WINDOW_BOUNDS
+		CMP BALL_Y, AX
+		JG NEG_VELOCITY_Y		
+								
+		RET
 		
+		NEG_VELOCITY_X:
+			NEG BALL_VELOCITY_X;
+			RET
+			
+		NEG_VELOCITY_Y:
+			NEG BALL_VELOCITY_Y;
+			RET
 	
-		
-		CALL CLEAR_SCREEN
-
-		CALL DRAW_BALL
-		
-		JMP CHECK_TIME	; after drawing check time again
-	RET
 	MOVE_BALL ENDP
 	
 	; clear screen
