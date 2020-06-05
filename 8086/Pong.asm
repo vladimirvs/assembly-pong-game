@@ -5,9 +5,14 @@ STACK ENDS
 ; Data segment
 ; DW - Define Word (16 bit)
 DATA SEGMENT PARA 'DATA'
+
+ TIME_AUX DB 0		; Variable to check if the time has changed
+
  BALL_X DW 0Ah 		; x position of the ball
  BALL_Y DW 0Ah 		; y position of the ball
  BALL_SIZE DW 04h	; 4 on x 4 on y = 16 in total
+ BALL_VELOCITY_X DW 05h ; 
+ BALL_VELOCITY_Y DW 02h
 
 DATA ENDS
 
@@ -27,23 +32,58 @@ CODE SEGMENT PARA 'CODE'
 	POP AX			; Release top of stack to the AX register
 	POP AX			; Release top of stack to the AX register
 	
-	
-		
-	mov AH, 00h ; set video mode
-	mov AL, 13h ; 13  320x200 256 color graphics (MCGA,VGA)
-	int 10h		; execute interruption
-		
-	; background color
-	mov AH,0Bh
-	mov BH, 00h
-	mov BL, 00h ; black color
-	int 10h
-		
-	CALL DRAW_BALL
+			
+	CALL CLEAR_SCREEN
+	CALL MOVE_BALL
 	
 		
 	RET
 	MAIN ENDP
+	
+	; Move ball
+	MOVE_BALL PROC NEAR
+		CHECK_TIME:
+	
+		MOV AH, 2Ch		; Get system time
+		INT 21h			; Return: CH = hour CL = minute DH = second DL = 1/100 seconds
+		
+		CMP DL, TIME_AUX; if the current time == to prev (TIME_AUX) ?
+		JE CHECK_TIME	; if it is the same, check again
+			
+		; reach this if time is different
+		MOV TIME_AUX, DL 	; update time
+		
+		MOV AX, BALL_VELOCITY_X
+		ADD BALL_X, AX
+		
+		MOV AX, BALL_VELOCITY_Y
+		ADD BALL_Y, AX
+		
+	
+		
+		CALL CLEAR_SCREEN
+
+		CALL DRAW_BALL
+		
+		JMP CHECK_TIME	; after drawing check time again
+	RET
+	MOVE_BALL ENDP
+	
+	; clear screen
+	CLEAR_SCREEN PROC NEAR
+		; clear the screen
+		mov AH, 00h ; set video mode
+		mov AL, 13h ; 13  320x200 256 color graphics (MCGA,VGA)
+		int 10h		; execute interruption
+			
+		; background color
+		mov AH,0Bh
+		mov BH, 00h
+		mov BL, 00h ; black color
+		int 10h
+		; 
+	RET
+	CLEAR_SCREEN ENDP
 	
 	; draw a pixel
 	DRAW_BALL PROC NEAR
