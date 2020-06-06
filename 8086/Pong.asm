@@ -146,6 +146,7 @@ CODE SEGMENT PARA 'CODE'
 		
 		MOV AX, BALL_VELOCITY_X
 		ADD BALL_X, AX
+		
 		MOV AX, WINDOW_BOUNDS
 		CMP BALL_X, AX		; BALL_X < 0 (x collided)
 		JL RESET_POSITION				; BALL_X > WINDOW_WIDTH (x collided)
@@ -156,21 +157,69 @@ CODE SEGMENT PARA 'CODE'
 		CMP BALL_X, AX
 		JG RESET_POSITION
 		
+		;       Move the ball vertically
 		MOV AX, BALL_VELOCITY_Y		
 		ADD BALL_Y, AX
+		
 		MOV AX, WINDOW_BOUNDS
 		CMP	BALL_Y, AX		; BALL_Y < 0 (y collided)
-		JL RESET_POSITION
+		JL NEG_VELOCITY_Y
+		
 		MOV AX, WINDOW_HEIGHT ; BALL_Y > WINDOW_HEIGHT (y collided)
 		SUB AX, BALL_SIZE
 		SUB AX, WINDOW_BOUNDS
 		CMP BALL_Y, AX
-		JG RESET_POSITION		
+		JG NEG_VELOCITY_Y		
+		
+		
+		;Check if the ball is colliding with the right paddle
+		;maxx1 > minx2 && minx1 < maxx2 && maxy1 > miny1 && miny1 < maxy2
+		; BALL_X + BALL_SIZE > PADDLE_RIGHT_X && BALL_X < PADDLE_RIGHT_X + PADDLE_WIDTH 
+		;&& BALL_Y + BALL_SIZE > PADDLE_RIGHT_Y && BALL_Y < PADDLE_RIGHT_Y + PADDLE_HEIGHT
+		MOV AX, BALL_X
+		ADD AX, BALL_SIZE
+		CMP AX, PADDLE_RIGHT_X
+		JNG CHECK_COLLISION_WITH_LEFT_PADDLE ; if there is no collision check for LEFT paddle
+		
+		MOV AX, PADDLE_RIGHT_X
+		ADD AX, PADDLE_WIDTH
+		CMP BALL_X, AX
+		JNL CHECK_COLLISION_WITH_LEFT_PADDLE ; if there is no collision check for LEFT paddle
+		
+		MOV AX, BALL_Y
+		ADD AX, BALL_SIZE
+		CMP AX, PADDLE_RIGHT_Y
+		JNG CHECK_COLLISION_WITH_LEFT_PADDLE ; if there is no collision check for LEFT paddle
+		
+		MOV AX, PADDLE_RIGHT_Y
+		ADD AX, PADDLE_HEIGHT
+		CMP BALL_Y, AX
+		JNL CHECK_COLLISION_WITH_LEFT_PADDLE ; if there is no collision check for LEFT paddle
+		
+		
+		; All conditions are true, let's move the ball back
+		NEG BALL_VELOCITY_X
+		RET
+		
+		
+		CHECK_COLLISION_WITH_LEFT_PADDLE:
+		
+		
+		
+		;Check if the ball is colliding with the left paddle
+		;maxx1 > minx2 && minx1 < maxx2 && maxy1 > miny1 && miny1 < maxy2
+		; BALL_X + BALL_SIZE > PADDLE_LEFT_X && BALL_X < PADDLE_LEFT_X + PADDLE_WIDTH 
+		;&& BALL_Y + BALL_SIZE > PADDLE_LEFT_Y && BALL_Y < PADDLE_LEFT_Y + PADDLE_HEIGHT
+		
 								
 		RET
 		
 		RESET_POSITION:
 			CALL RESET_BALL_POS
+			RET
+			
+		NEG_VELOCITY_Y:
+			NEG BALL_VELOCITY_Y   ;BALL_VELOCITY_Y = - BALL_VELOCITY_Y
 			RET
 	
 	MOVE_BALL ENDP
